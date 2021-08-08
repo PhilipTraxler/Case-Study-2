@@ -1,0 +1,104 @@
+---
+title: "Case Study 2"
+author: "Traxler"
+date: "8/7/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 
+
+
+```{r cars}
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+https://youtu.be/W-kJ4I_q9Go
+
+# Pulling in data for Attrition
+library(dlookr)
+library(visdat)
+library(plotly)
+library(missRanger)
+library(ggplot2)
+library(magrittr)
+library(ranger)
+library(dplyr)
+library(class)
+library(caret)
+library(e1071)
+library(GGally)
+library(stringi)
+library(stringr)
+library(xgboost)
+library(car)
+library(Matrix)
+library(keras)
+library(forecast)
+library(neuralnet)
+library(tidyverse)
+library(mice)
+library(gdata)
+Fulldata = read.csv("/Users/phili/OneDrive/Documents/Case Study 2/CaseStudy2Data.csv")
+Fulldata = Fulldata %>% mutate_if(is.character,as.factor)
+TestingData = read.csv("/Users/phili/OneDrive/Documents/Case Study 2/CaseStudy2CompSet.csv")
+TestingData = TestingData %>% mutate_if(is.character, as.factor)
+NoSalary = read.csv("/Users/phili/OneDrive/Documents/Case Study 2/CaseStudy2CompSet No Salary.csv")
+NoSalary = NoSalary %>% mutate_if(is.character, as.factor)
+Fulldata$MonthlyIncome = abs(Fulldata$MonthlyIncome)
+
+
+
+
+#Naive Bayes Model
+
+set.seed(1234)
+splitPerc = .90
+trainIndices = sample(1:dim(Fulldata)[1],round(splitPerc * dim(Fulldata)[1]))
+
+
+train = Fulldata[trainIndices,]
+test = Fulldata[-trainIndices,]
+y = train$Attrition
+x = remove.vars(train, names = "Attrition",info = TRUE)
+
+NB_Model = train(x,y,trControl = trainControl(method = 'cv',number = 100))
+NB_Prediction = predict(NB_Model, newdata = TestingData)
+CM = confusionMatrix(NB_Prediction,test$Attrition)
+CM
+
+#EDA Looking at Travel distance, Marital Status, and Monthly Income
+
+eda_report(Fulldata,output_format = "html")
+
+Fulldata %>% select(JobRole,MaritalStatus,MonthlyIncome) %>% ggpairs()
+
+plot_correlate(Fulldata)
+
+# Building a regression model
+library(Boruta)
+# Decide if a variable is important or not using Boruta
+boruta_output <- Boruta(MonthlyIncome ~. , data=na.omit(train), pValue = .010, maxRuns= 500,doTrace=2)  # perform Boruta search
+
+boruta_signif <- names(boruta_output$finalDecision[boruta_output$finalDecision %in% c("Confirmed", "Tentative")])  # collect Confirmed and Tentative variables
+print(boruta_signif)  # significant variables
+
+
+# Fitting Real Model
+Custom_Model = lm(MonthlyIncome~ Attrition + + Department+ Education+ JobLevel+ JobRole+ NumCompaniesWorked+ TotalWorkingYears+ YearsAtCompany+ YearsInCurrentRole+ YearsSinceLastPromotion+ YearsWithCurrManager, data = train)
+vif(Custom_Model)
+Model_Preds = predict(Custom_Model,NoSalary)
+Model_Preds
+RSS = c(crossprod(Custom_Model$residuals))
+MSE = RSS / length(Custom_Model$residuals)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
